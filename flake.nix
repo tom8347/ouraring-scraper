@@ -9,18 +9,22 @@
     pkgs = import nixpkgs { inherit system; };
     py = pkgs.python3.withPackages (ps: with ps; [
       requests
+      numpy
+      matplotlib
       pynvim
       python-lsp-server
+      pyqt6
     ]);
   in
   {
     devShells.${system}.default = pkgs.mkShell {
-      packages = [ py ];
+      packages = [ py pkgs.qt6.qtwayland ];
 
       shellHook = ''
         echo "Oura scraper environment"
         echo "Python: $(python --version)"
-        echo "requests: $(python -c 'import requests; print(requests.__version__)')"
+        export QT_QPA_PLATFORM=wayland
+        export MPLBACKEND=QtAgg
       '';
     };
   };
