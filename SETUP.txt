@@ -1,0 +1,74 @@
+Oura Ring Scraper - Setup Instructions
+=======================================
+
+1. REGISTER AN OAUTH2 APP
+   Go to: https://cloud.ouraring.com/oauth/applications
+   - Click "Create New Application"
+   - Set Redirect URI to: http://localhost:8080/callback
+   - Note your Client ID and Client Secret
+
+2. CREATE CONFIG FILE
+   Copy config.json.example to config.json and fill in your credentials:
+     cp config.json.example config.json
+     # edit config.json with your client_id and client_secret
+
+3. ENTER THE NIX SHELL
+   (installs Python + requests via nix)
+     direnv allow      # or: nix develop
+
+4. RUN THE SCRAPER
+     python scraper.py
+
+   On first run it will open your browser for Oura authorization.
+   After authorizing, tokens are saved to tokens.json automatically.
+
+   Subsequent runs fetch only new data since the last run.
+
+5. OPTIONS
+     python scraper.py --reset   # re-fetch all data from scratch
+
+6. DATA FILES
+   All data is saved to ./data/ as CSV files:
+     daily_sleep.csv         - daily sleep scores + contributors
+     sleep.csv               - detailed sleep sessions (HRV, heart rate, etc.)
+     daily_activity.csv      - activity scores, steps, calories, etc.
+     daily_readiness.csv     - readiness scores + contributors
+     daily_stress.csv        - stress and recovery time
+     daily_resilience.csv    - resilience level
+     daily_spo2.csv          - blood oxygen (Gen 3 only)
+     daily_cardiovascular_age.csv
+     vo2_max.csv
+     heartrate.csv           - time-series heart rate readings
+     workout.csv             - workout sessions
+     sleep_time.csv          - optimal bedtime recommendations
+     tag.csv / enhanced_tag.csv
+     session.csv             - meditation/breathing sessions
+     rest_mode_period.csv
+     personal_info.json      - your profile (JSON, not CSV)
+
+7. LOADING DATA IN PYTHON/NUMPY
+   import numpy as np
+   import csv
+
+   # With numpy (numeric columns only):
+   data = np.genfromtxt('data/daily_sleep.csv', delimiter=',',
+                        names=True, dtype=None, encoding='utf-8')
+   scores = data['score']
+
+   # With pandas (easiest for mixed types):
+   import pandas as pd
+   df = pd.read_csv('data/daily_sleep.csv', parse_dates=['day'])
+   df.plot(x='day', y='score')
+
+8. SCHEDULING (optional)
+   Add to crontab to run daily at 8am:
+     crontab -e
+     # add: 0 8 * * * cd /home/tom/Documents/oura_scraper && nix develop --command python scraper.py
+
+NOTES
+- Tokens are refreshed automatically when they expire.
+- If refresh fails, the browser will open again for re-authorization.
+- The scraper overlaps by 2 days on each run to catch late-syncing data;
+  duplicates are automatically filtered by record ID.
+- Array-type fields (e.g. HRV samples, heart rate samples during sleep) are
+  stored as JSON strings within the CSV cell. Parse with json.loads() if needed.
