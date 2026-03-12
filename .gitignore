@@ -2,3 +2,4 @@ config.json
 tokens.json
 .state.json
 data/
+__pycache__/
