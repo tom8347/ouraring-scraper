@@ -3,3 +3,4 @@ tokens.json
 .state.json
 data/
 __pycache__/
+.direnv/
