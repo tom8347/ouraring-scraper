@@ -10,6 +10,7 @@
     py = pkgs.python3.withPackages (ps: with ps; [
       requests
       numpy
+      pandas
       matplotlib
       pynvim
       python-lsp-server
