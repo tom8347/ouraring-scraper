@@ -13,11 +13,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.data = data_store
         self.setWindowTitle("Oura Viewer")
-        self.resize(1200, 700)
+        self.resize(1280, 760)
 
         central = QWidget()
         self.setCentralWidget(central)
         layout = QHBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         self.controls = ControlPanel(self.data.available_files())
         self.canvas = PlotCanvas()
@@ -27,7 +29,7 @@ class MainWindow(QMainWindow):
 
         self.controls.plot_requested.connect(self._on_plot)
 
-        self.statusBar().showMessage("Select metrics and click Plot")
+        self.statusBar().showMessage("Select metrics to plot")
 
     def _on_plot(self, metric_keys, start, end):
         series = []
