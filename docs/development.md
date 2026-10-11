@@ -143,12 +143,16 @@ All `GET`s, plus one `POST`. Bound to 127.0.0.1 only.
 | `/api/summary` | `{days: [date…], metrics: [{key, label, unit, group, decimals}…], values: {key: [value or null, aligned with days]}, labels: {stress_summary: {day: …}, resilience: {day: …}}, profile}`. Only metrics with data are included. |
 | `/api/day?d=YYYY-MM-DD` | One day's detail: `metrics` (that day's row), `sleep` (`start`, `end`, `phases`, `movement`, `hr`/`hrv` sample series, `durations`), `naps`, `activity` (`start`, `class_5_min`, `met`), `heartrate` (`[[epoch ms, bpm, source]…]` for the local day), `battery`, `workouts`, `sessions`, `tags`, `stress_summary`, `resilience`, `bedtime`. Times are epoch ms. |
 | `/api/meta` | Data files (name, rows, columns, from/to, size), sync state, granted scopes, ring, profile, recent battery readings, `data_dir`, `syncing`, `sync_log`. |
+| `/api/ping` | `{}`. Open pages call it every 30 s so the server stays up while a window is open; it never loads the data. |
 | `POST /api/sync` | Runs `python -m oura sync` in a child process with the server's `sys.path` (so it works inside the Nix wrapper), then drops the cached DataStore. Returns `{ok, log}`. |
 
 **Socket activation.** When `LISTEN_PID`/`LISTEN_FDS` say systemd passed a
 socket, `serve()` adopts fd 3 instead of binding. With `--idle-exit N`, a
-watcher thread shuts the server down after N minutes without requests (never
-during a sync). The socket unit keeps listening, so the next request starts it
+watcher thread (checking every 10 s) shuts the server down after N minutes
+without requests (never during a sync). Pages ping `/api/ping` every 30 s, so
+N=2 (the default for `oura dashboard` and the module) means "about 2 minutes
+after the last window closes"; Chromium throttles hidden tabs to one timer per
+minute, so keep N at 2 or more. The socket unit keeps listening, so the next request starts it
 again.
 
 ## Front end

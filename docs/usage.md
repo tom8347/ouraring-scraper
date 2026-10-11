@@ -166,8 +166,10 @@ oura dashboard
 
 This opens <http://127.0.0.1:8787/>. With the Home Manager module, systemd
 starts the server on the first request (about 2 seconds while it loads the
-data) and stops it after 30 idle minutes. Without the module,
-`oura dashboard` starts its own server, which also exits after 30 idle minutes.
+data). Without the module, `oura dashboard` starts its own server. Either
+way, an open dashboard pings the server every 30 seconds, and the server exits
+about 2 minutes after the last window closes (a minimised window still counts
+as open).
 Bookmark the URL or open it from a launcher. It works in any browser.
 
 ### Navigating
@@ -239,7 +241,7 @@ With `services.oura.enable = true` (Linux):
 | `oura-sync.service` | One-shot `oura sync`. |
 | `oura-sync.timer` | Starts it a minute after login and then on `syncInterval` (default every 30 min). `Persistent=true`, so a run missed while asleep happens on wake. |
 | `oura-dashboard.socket` | Listens on `127.0.0.1:8787` and starts the server on the first connection. |
-| `oura-dashboard.service` | `oura serve`, which exits after `dashboard.idleExit` idle minutes. The socket keeps listening, so the next visit starts it again. |
+| `oura-dashboard.service` | `oura serve`, which exits `dashboard.idleExit` minutes after the last dashboard window closes. The socket keeps listening, so the next visit starts it again. |
 
 Useful commands:
 
@@ -266,7 +268,7 @@ resident between uses.
 | `services.oura.dataDir` | `${xdg.dataHome}/oura` | Where the CSVs go. Also exported as `OURA_DATA_DIR` in your session, so `oura` in a terminal uses the same place. |
 | `services.oura.syncInterval` | `"*:0/30"` | systemd `OnCalendar` expression, e.g. `"hourly"` or `"*:0/15"`. |
 | `services.oura.dashboard.port` | `8787` | Dashboard port on 127.0.0.1. |
-| `services.oura.dashboard.idleExit` | `30` | Minutes of inactivity before the server stops (`0`: never). |
+| `services.oura.dashboard.idleExit` | `2` | Minutes without a request (open pages ping every 30 s) before the server stops (`0`: never). |
 
 ### Environment variables
 

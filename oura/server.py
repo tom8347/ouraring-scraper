@@ -4,6 +4,7 @@ Local HTTP server for the dashboard: static files from web/ plus a small JSON AP
     GET  /api/summary        every daily metric, as columns
     GET  /api/day?d=DATE     one day's detail (sleep stages, samples, workouts…)
     GET  /api/meta           files, sync state, scopes, ring
+    GET  /api/ping           heartbeat from an open page (keeps the server up)
     POST /api/sync           run `oura sync`, then reload
 
 Works standalone or socket-activated by systemd (LISTEN_FDS): the socket unit
@@ -91,6 +92,8 @@ def make_handler(app: App):
                 if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
                     return self._json({"error": "bad date"}, 400)
                 return self._json(app.store.day(day))
+            if url.path == "/api/ping":
+                return self._json({})
             if url.path == "/api/meta":
                 return self._json(app.store.meta() | {"syncing": app.syncing, "sync_log": app.sync_log})
             if url.path.startswith("/api/"):
@@ -125,7 +128,7 @@ def serve(port=8787, idle_exit=0):
     if idle_exit:
         def watch():
             while True:
-                time.sleep(30)
+                time.sleep(10)
                 if not app.syncing and time.monotonic() - app.last_request > idle_exit * 60:
                     server.shutdown()
                     return

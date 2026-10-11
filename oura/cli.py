@@ -73,9 +73,10 @@ def open_window(url):
 def cmd_dashboard(args):
     url = f"http://127.0.0.1:{args.port}/"
     if not _listening(args.port):
-        # No socket unit / server running: start one that exits when left idle
+        # No socket unit / server running: start one that exits once no window is open
+        # (open pages ping every 30 s)
         env = dict(os.environ, PYTHONPATH=os.pathsep.join(p for p in sys.path if p))
-        subprocess.Popen([sys.executable, "-m", "oura", "serve", "--port", str(args.port), "--idle-exit", "30"],
+        subprocess.Popen([sys.executable, "-m", "oura", "serve", "--port", str(args.port), "--idle-exit", "2"],
                          env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         for _ in range(50):
             if _listening(args.port):

@@ -1026,6 +1026,8 @@ async function init() {
   state.range = store.get("range", "1M");
   readHash();
   go({}, true);
+  // Heartbeat: the server exits a couple of minutes after the last window closes
+  setInterval(() => fetch("/api/ping").catch(() => {}), 30_000);
 }
 
 init();

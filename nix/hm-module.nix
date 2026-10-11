@@ -44,8 +44,8 @@ in
       };
       idleExit = lib.mkOption {
         type = lib.types.ints.unsigned;
-        default = 30;
-        description = "Stop the dashboard server after this many idle minutes (0: never). The next visit starts it again.";
+        default = 2;
+        description = "Stop the dashboard server after this many minutes with no dashboard window open (0: never). The next visit starts it again.";
       };
     };
   };
