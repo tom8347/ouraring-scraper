@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oura"
+version = "0.2.0"
+description = "Scrape Oura Ring data to CSV and browse it in a local dashboard"
+requires-python = ">=3.11"
+dependencies = ["requests"]
+
+[project.scripts]
+oura = "oura.cli:main"
+
+[tool.setuptools]
+packages = ["oura"]
+
+[tool.setuptools.package-data]
+oura = ["web/*"]

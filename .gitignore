@@ -4,3 +4,5 @@ tokens.json
 data/
 __pycache__/
 .direnv/
+*.tmp
+app_screenshots/

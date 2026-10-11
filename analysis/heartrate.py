@@ -3,12 +3,12 @@
 
 import csv
 from datetime import datetime
-from pathlib import Path
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-DATA = Path(__file__).parent.parent / "data"
+from oura.paths import data_dir
+
+DATA = data_dir()
 
 with open(DATA / "heartrate.csv", newline="") as f:
     reader = csv.DictReader(f)

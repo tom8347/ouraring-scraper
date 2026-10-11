@@ -3,7 +3,9 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-DATA_FILE = "data/daily_resilience.csv"
+from oura.paths import data_dir
+
+DATA_FILE = data_dir() / "daily_resilience.csv"
 
 rows = []
 with open(DATA_FILE) as f:

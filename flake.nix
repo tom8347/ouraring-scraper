@@ -1,34 +1,50 @@
 {
-  description = "Oura Ring data scraper";
+  description = "Oura Ring data scraper and dashboard";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs }:
   let
     systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-    forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+    forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
   in
   {
-    devShells = forAllSystems (system:
+    packages = forAllSystems (pkgs: {
+      default = pkgs.callPackage ./nix/package.nix { };
+    });
+
+    # services.oura: sync timer + socket-activated dashboard (see nix/hm-module.nix)
+    homeManagerModules.default = import ./nix/hm-module.nix self;
+
+    devShells = forAllSystems (pkgs:
     let
-      pkgs = import nixpkgs { inherit system; };
       isLinux = pkgs.stdenv.isLinux;
       py = pkgs.python3.withPackages (ps: with ps; [
+        pynvim
+        python-lsp-server
+        pylsp-mypy
+        pylsp-rope
+        ipython
+        # project
         requests
+        setuptools
+        # analysis/ scripts
         numpy
-        pandas
         matplotlib
         pyqt6
       ]);
-      linuxPkgs = pkgs.lib.optionals isLinux [ pkgs.qt6.qtwayland ];
+      # `oura` runs the working tree, not the packaged copy
+      oura-dev = pkgs.writeShellScriptBin "oura" ''exec python -m oura "$@"'';
     in
     {
       default = pkgs.mkShell {
-        packages = [ py ] ++ linuxPkgs;
+        packages = [ py oura-dev ] ++ pkgs.lib.optionals isLinux [ pkgs.qt6.qtwayland ];
 
         shellHook = ''
+          export PYTHONPATH="$PWD''${PYTHONPATH:+:$PYTHONPATH}"
           echo "Oura scraper environment"
           echo "Python: $(python --version)"
+          echo "Run: oura dashboard   (oura --help for more)"
           ${pkgs.lib.optionalString isLinux ''
             export QT_QPA_PLATFORM=wayland
           ''}
