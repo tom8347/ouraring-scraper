@@ -100,6 +100,10 @@ export OURA_DATA_DIR=/tmp/oura-test OURA_CONFIG_DIR=/tmp/oura-test-config
   clock, cumulative stress or nighttime breathing.
 - `heartrate`, `ring_battery_level` and the research endpoints take
   `start_datetime`/`end_datetime`; the rest take `start_date`/`end_date`.
+- `end_date` is **exclusive** for `daily_activity` and `workout` (inclusive
+  for the other daily endpoints), so `_range_params` always sends the day
+  after. Without that, today's activity score and today's workouts never
+  arrive.
 - Large time series 400 on long ranges, so they're fetched in chunks
   (`chunk_days`).
 - `vO2_max` is mixed case in the URL.

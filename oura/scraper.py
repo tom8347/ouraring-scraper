@@ -164,7 +164,10 @@ def merge_into_csv(records, filepath, key):
 def _range_params(style, start, end):
     if style == "datetime":
         return {"start_datetime": f"{start}T00:00:00Z", "end_datetime": f"{end}T23:59:59Z"}
-    return {"start_date": start, "end_date": end}
+    # end_date is exclusive for some endpoints (daily_activity, workout), so ask
+    # for one more day; otherwise today's activity score never arrives
+    end_excl = (datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+    return {"start_date": start, "end_date": end_excl}
 
 
 def _fetch_pages(session, path, params):

@@ -84,6 +84,7 @@ Deploying: push here, then `nix flake update ouraring-scraper` in `~/.dotfiles` 
   body clock/chronotype, cumulative stress, nighttime breathing, sleep regularity
   (regularity is only a readiness contributor).
 - `heartrate` and `ring_battery_level` use `start_datetime`/`end_datetime`; most others use `start_date`/`end_date`
+- `end_date` is exclusive for `daily_activity` and `workout` (inclusive elsewhere); the scraper sends end+1 day
 - Time-series endpoints are fetched in chunks (`chunk_days`) to avoid 400s on large ranges
 - `heartrate` has no `sleep` source; overnight HR/HRV come from `sleep.csv` sample arrays
 
