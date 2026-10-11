@@ -159,6 +159,10 @@ def get_access_token():
         raise NotLoggedIn("refresh token rejected")
     resp.raise_for_status()
     fresh = resp.json()
+    # Keep what the refresh reply leaves out (it needn't repeat these)
+    for key in ("refresh_token", "scope"):
+        if not fresh.get(key) and tokens.get(key):
+            fresh[key] = tokens[key]
     fresh["expires_at"] = time.time() + fresh.get("expires_in", 3600)
     _save_tokens(fresh)
     return fresh["access_token"]

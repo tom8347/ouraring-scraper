@@ -1,22 +1,51 @@
 # ouraring-scraper
 
-Scrape everything your Oura Ring makes available through the Oura API into
-plain CSV files, and browse it in a local dashboard styled after the Oura app.
+Pull everything your Oura Ring makes available through the Oura API into plain,
+code-friendly CSV files, and browse it in a local dashboard styled after the
+Oura app.
 
-- **`oura sync`** fetches sleep, readiness, activity, heart rate, stress,
-  resilience, SpO2, cardiovascular age, VO2 max, workouts, ring battery and
-  more, one CSV per endpoint. Each run only asks for what's new.
-- **`oura dashboard`** opens a local web dashboard (stdlib Python server,
-  vanilla JS/SVG): day views for sleep, readiness, activity, heart and stress,
-  trends with correlation, and a data page.
-- **`glance.json`** — a small summary of the last week, rewritten after every
-  sync, for status bars and widgets to read.
+- **Everything the API offers.** Sleep (with 5-minute stages and overnight
+  HR/HRV), readiness, activity (with MET and intensity timelines), daytime heart
+  rate, stress, resilience, SpO2 and breathing disturbance, cardiovascular age
+  and pulse wave velocity, VO2 max, workouts, sessions, tags, rest mode, ring
+  battery and ring details.
+- **Plain files.** One CSV per endpoint, sorted by date, nested fields flattened
+  with dots. Each sync only asks for what's new and refreshes recent days.
+- **A local dashboard.** Day views for sleep, readiness, activity, heart and
+  stress; trends over any range; a metric explorer with correlation; and a data
+  page. Plain Python server and vanilla JS/SVG, no third-party front-end code.
+- **Made for status bars.** Every sync writes `glance.json`, a small summary
+  of the last week that a bar or widget can watch.
+- **Runs itself.** The Home Manager module syncs every 30 minutes and starts
+  the dashboard on demand.
+- **Private by design.** Nothing leaves your machine except calls to the Oura
+  API. Credentials live in one mode-600 directory and never in configuration.
 
-No data leaves your machine except the API calls to Oura.
+## Contents
 
-## Install
+- [Quick start](#quick-start)
+- [Commands](#commands)
+- [Where things live](#where-things-live)
+- [Documentation](#documentation)
+- [What the API does and doesn't provide](#what-the-api-does-and-doesnt-provide)
+- [Requirements](#requirements)
 
-### Nix (Home Manager)
+## Quick start
+
+You need an Oura account, a ring and Nix with flakes. Without Nix, see
+[Requirements](#requirements).
+
+### 1. Register an Oura API app (once)
+
+At <https://cloud.ouraring.com/oauth/applications>, create an application with
+the redirect URI **`http://localhost:8080/callback`**. Keep the **client ID**
+and **client secret** handy. [docs/usage.md](docs/usage.md#1-register-an-oura-api-app)
+walks through the form.
+
+### 2. Install
+
+**With Home Manager (recommended).** This gives you automatic syncing and an
+on-demand dashboard:
 
 ```nix
 # flake.nix
@@ -25,105 +54,93 @@ inputs.ouraring-scraper = {
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
-# home.nix
+# home.nix (the module needs `inputs` passed in, e.g. via extraSpecialArgs)
 imports = [ inputs.ouraring-scraper.homeManagerModules.default ];
 services.oura.enable = true;
 ```
 
-This installs the `oura` command and two systemd user units:
-
-| unit | what it does |
-|---|---|
-| `oura-sync.timer` | runs `oura sync` every 30 minutes (catches up after sleep) |
-| `oura-dashboard.socket` | serves the dashboard on `127.0.0.1:8787`; the server starts on the first visit and exits after 30 idle minutes |
-
-Options: `dataDir`, `syncInterval` (systemd `OnCalendar`), `dashboard.port`,
-`dashboard.idleExit`. See `nix/hm-module.nix`.
-
-### Nix (no Home Manager)
+**Without Home Manager:**
 
 ```sh
-nix run github:tom8347/ouraring-scraper -- login
-nix run github:tom8347/ouraring-scraper -- dashboard
+nix profile install github:tom8347/ouraring-scraper
+# or run without installing:  nix run github:tom8347/ouraring-scraper -- <command>
 ```
 
-## First run: `oura login`
+### 3. Log in and look
 
-1. Register an app at <https://cloud.ouraring.com/oauth/applications> with the
-   redirect URI `http://localhost:8080/callback`.
-2. Run `oura login` and paste the client ID and secret when asked. Your browser
-   opens Oura's consent page; afterwards the first sync fetches up to two years
-   of history.
+```sh
+oura login        # paste the client ID and secret; approve in the browser
+oura dashboard    # opens http://127.0.0.1:8787/
+```
 
-Credentials and tokens are stored in `~/.config/oura/` (mode 600) and are never
-part of any configuration. Only `oura login` ever opens a browser; background
-syncs fail quietly (and say so in `glance.json`) if the login lapses.
+`oura login` stores the credentials, authorises the app and runs the first
+sync, which fetches up to two years of history. That's all. With the Home
+Manager module, data then refreshes every half hour.
 
 ## Commands
 
-```
-oura login               store app credentials and authorize (opens a browser)
-oura sync [--reset]      fetch anything new (--reset: re-fetch everything)
-oura dashboard           open the dashboard, starting the server if needed
-oura serve               run the dashboard server in the foreground
-oura glance              rewrite glance.json from the data on disk
-oura status              show paths, login state and granted scopes
-```
+| command | what it does |
+|---|---|
+| `oura login` | Store your app credentials, authorise in the browser, then sync. The only command that ever opens a login page. `--new-app` asks for new credentials, `--no-sync` skips the sync. |
+| `oura sync` | Fetch anything new (2-day overlap for late syncs) and rewrite `glance.json`. Never interactive. `--reset` re-fetches the last 730 days. |
+| `oura dashboard` | Open the dashboard, starting a server if none is listening. `--no-open` only starts it, `--port` changes the port. |
+| `oura serve` | Run the dashboard server in the foreground. `--idle-exit MIN` stops it after MIN idle minutes. |
+| `oura glance` | Rewrite `glance.json` from the data on disk, without contacting Oura. |
+| `oura status` | Show where everything is, whether you're logged in, the last sync date and the granted scopes. |
 
-Dashboard keys: ← / → change day, T jumps to today, 1–8 switch pages.
+Dashboard keys: **← / →** previous and next day, **T** today, **1–8** switch
+pages.
 
 ## Where things live
 
 | path | contents |
 |---|---|
-| `~/.config/oura/` | `credentials.json`, `tokens.json` — secrets, mode 600 (`$OURA_CONFIG_DIR`) |
-| `~/.local/share/oura/` | one CSV per endpoint, `personal_info.json`, `.state.json` (`$OURA_DATA_DIR`) |
-| `~/.local/state/oura/glance.json` | the last 7 days in brief, for bars and widgets |
+| `~/.config/oura/` | `credentials.json`, `tokens.json`: **secrets**, mode 600. Override with `$OURA_CONFIG_DIR`. |
+| `~/.local/share/oura/` | One CSV per endpoint, `personal_info.json`, `.state.json` (last sync per endpoint). Override with `$OURA_DATA_DIR`. |
+| `~/.local/state/oura/glance.json` | The last 7 days in brief, for bars and widgets. |
 
-The data directory holds no credentials, so it's safe to sync or back up.
-Everything in it can be fetched again from Oura (`oura sync --reset`).
+XDG variables (`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`) are
+respected. The data directory contains no credentials, but it is your personal
+health data, so treat it accordingly. Everything in it can be fetched again from
+Oura with `oura sync --reset`.
 
-## Data format
+## Documentation
 
-- One CSV per endpoint, sorted by date. Nested fields are flattened with dots:
-  `contributors.hrv_balance`.
-- Sample arrays are JSON strings in one cell, with sibling columns giving the
-  spacing and start: `heart_rate.items`, `heart_rate.interval` (seconds),
-  `heart_rate.timestamp`.
-- Sleep stage strings (`sleep_phase_5_min`): 1 deep, 2 light, 3 REM, 4 awake.
-- Activity class strings (`class_5_min`, from 4 am): 0 non-wear, 1 rest,
-  2 inactive, 3 low, 4 medium, 5 high.
-- Re-fetched records replace stored ones (matched by `id`, or `timestamp` for
-  time series), so partial days stay current. New API fields become new columns.
+| | |
+|---|---|
+| [docs/usage.md](docs/usage.md) | Full guide: setup step by step, syncing, every dashboard page, the systemd services, configuration options, moving to a new machine, troubleshooting, uninstalling. |
+| [docs/data.md](docs/data.md) | Data reference: every file and column, units, the encoded strings (sleep stages, activity classes), sample arrays, `glance.json`'s schema, loading examples. |
+| [docs/development.md](docs/development.md) | How the code fits together, the dashboard's JSON API, adding endpoints and metrics, packaging and deploying. |
+| [docs/oura-openapi.json](docs/oura-openapi.json) | Oura's OpenAPI spec (v1.41), for reference. |
 
-```python
-import csv, json
-from oura.paths import data_dir
+## What the API does and doesn't provide
 
-rows = list(csv.DictReader(open(data_dir() / "sleep.csv")))
-night = [r for r in rows if r["type"] == "long_sleep"][-1]
-hr = json.loads(night["heart_rate.items"])   # one value per 5 minutes
-```
+Every endpoint in Oura's v2 API is scraped:
 
-### Endpoints
+`daily_activity` · `daily_sleep` · `sleep` · `sleep_time` · `daily_readiness` ·
+`daily_stress` · `daily_resilience` · `daily_spo2` · `daily_cardiovascular_age` ·
+`vO2_max` · `heartrate` · `ring_battery_level` · `workout` · `tag` · `enhanced_tag` ·
+`session` · `rest_mode_period` · `ring_configuration` · `personal_info`
 
-`daily_activity`, `daily_sleep`, `sleep`, `sleep_time`, `daily_readiness`,
-`daily_stress`, `daily_resilience`, `daily_spo2`, `daily_cardiovascular_age`,
-`vo2_max`, `heartrate`, `ring_battery_level`, `workout`, `tag`, `enhanced_tag`,
-`session`, `rest_mode_period`, `ring_configuration`, plus `personal_info.json`.
+The API also has undocumented `symptom_radar`, `meal`, `temperature` (raw skin
+temperature) and `interbeat_interval` endpoints. They sit behind scopes
+(`health_radar`, `meals`, `research`) that Oura's consent screen currently
+drops for personal apps. They're requested anyway and skipped with a note if
+not granted.
 
-The API also has undocumented `symptom_radar`, `meal`, `temperature` and
-`interbeat_interval` endpoints behind scopes Oura doesn't currently grant to
-personal apps; they're requested and skipped if refused. Newer app features
-(nighttime blood pressure, sleep debt, body clock, cumulative stress) aren't
-in the API.
+Some newer Oura app features have **no API endpoint**: nighttime blood
+pressure, sleep debt, body clock / chronotype, cumulative stress, nighttime
+breathing, Symptom Radar's verdicts and meal logs. Sleep regularity appears only
+as a readiness contributor.
 
-## Development
+## Requirements
 
-```sh
-direnv allow          # or: nix develop
-oura dashboard        # in the dev shell, `oura` runs the working tree
-nix build             # the packaged app
-```
-
-`analysis/` has a couple of ad-hoc matplotlib scripts that read the data dir.
+- An Oura Ring with an Oura account, and an API app (step 1 above).
+- **Nix** (flakes) for the packaged install. Without Nix: Python 3.11+ and
+  `requests`, then run `python -m oura …` from a clone.
+- The automatic sync timer and on-demand dashboard need **Home Manager on
+  Linux** (systemd user units). On macOS, run `oura sync` from launchd or cron.
+- A browser for the dashboard. `oura dashboard` prefers a chromeless
+  Chromium/Chrome `--app` window and falls back to your default browser.
+- Ports **8080** (only during `oura login`, for the OAuth callback) and **8787**
+  (the dashboard) on 127.0.0.1.

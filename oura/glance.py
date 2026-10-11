@@ -84,6 +84,17 @@ def _day(store, day):
     }
 
 
+def _tidy(obj):
+    """Whole numbers as ints (85, not 85.0), so scripts and widgets print them cleanly."""
+    if isinstance(obj, float) and obj.is_integer():
+        return int(obj)
+    if isinstance(obj, dict):
+        return {k: _tidy(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_tidy(v) for v in obj]
+    return obj
+
+
 def build(store=None):
     store = store or DataStore(heartrate=False)
     today = date.today()
@@ -93,7 +104,7 @@ def build(store=None):
     return {
         "latest": with_readiness[-1] if with_readiness else None,
         "age": profile.get("age"),
-        "days": [_day(store, d) for d in days],
+        "days": [_tidy(_day(store, d)) for d in days],
     }
 
 

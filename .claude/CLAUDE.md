@@ -28,6 +28,18 @@ Oura-app-style dashboard for browsing it.
 - `oura/web/` — dashboard: `index.html`, `app.css` (Rosé Pine tokens), `charts.js` (SVG chart kit), `app.js` (pages + routing)
 - `nix/package.nix`, `nix/hm-module.nix`, `flake.nix`
 
+## Docs (keep in step with the code)
+
+- `README.md` — overview, quick start, commands, paths
+- `docs/usage.md` — user guide (setup, sync, dashboard pages, services, options, troubleshooting)
+- `docs/data.md` — every file/column, encodings, `glance.json` schema
+- `docs/development.md` — architecture, API quirks, server API, how to add endpoints/metrics, releasing
+- `docs/oura-openapi.json` — Oura's spec (v1.41)
+
+When behaviour, options, files or columns change, update the matching doc in
+the same change. Setup steps for the user's machines also live in
+`~/.dotfiles/BOOTSTRAP.md` (Oura section).
+
 ## Where things live (not in the repo)
 
 - `~/.config/oura/credentials.json`, `tokens.json` — secrets, mode 600
